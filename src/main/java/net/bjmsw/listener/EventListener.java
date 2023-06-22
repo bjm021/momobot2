@@ -7,6 +7,7 @@ import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import net.bjmsw.Launcher;
+import net.bjmsw.manager.GuildPlayerManager;
 import net.bjmsw.util.AudioPlayerSendHandler;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -31,12 +32,12 @@ public class EventListener extends ListenerAdapter {
     }
 
     private AudioPlayerManager apm;
-    AudioPlayer player;
+    private GuildPlayerManager gpm;
     EventListener.PlayerState state = EventListener.PlayerState.STOPPED;
 
-    public EventListener(AudioPlayerManager apm) {
+    public EventListener(AudioPlayerManager apm, GuildPlayerManager gpm) {
         this.apm = apm;
-        player = Launcher.getApm().createPlayer();
+        this.gpm = gpm;
     }
 
     @Override
@@ -56,14 +57,18 @@ public class EventListener extends ListenerAdapter {
                             Button.primary("eq-soft", "Soft"),
                             Button.primary("eq-trebleboost", "Treble Boost")
                     ).setEphemeral(true).queue();
+        } else if (event.getName().equalsIgnoreCase("test")) {
+            System.out.println(gpm.getPlayerForGuild(event.getGuild().getId()).getPlayingTrack());
+            event.reply(gpm.getPlayerForGuild(event.getGuild().getId()).getPlayingTrack().toString()).setEphemeral(true).queue();
         }
     }
 
     @Override
     public void onButtonInteraction(ButtonInteractionEvent event) {
+        var player = gpm.getPlayerForGuild(event.getGuild().getId());
         System.out.println("DEBUG: Button interaction detected: " + event.getComponentId());
         if (event.getComponentId().equalsIgnoreCase("pause")) {
-            if (state == PlayerState.STOPPED) {
+            if (player.isPaused()) {
                 event.reply("No track is currently playing!").setEphemeral(true).queue();
                 return;
             }
@@ -77,7 +82,7 @@ public class EventListener extends ListenerAdapter {
             event.reply("Stopped!").setEphemeral(true).queue();
             state = PlayerState.STOPPED;
         } else if (event.getComponentId().equalsIgnoreCase("resume")) {
-            if (state == PlayerState.STOPPED) {
+            if (player.getPlayingTrack() == null) {
                 event.reply("No track is currently paused!").setEphemeral(true).queue();
                 return;
             }
@@ -98,6 +103,7 @@ public class EventListener extends ListenerAdapter {
     }
 
     private void playTrack(String query, boolean now, GenericInteractionCreateEvent event) {
+        var player = gpm.getPlayerForGuild(event.getGuild().getId());
         if (!query.startsWith("http")) {
             query = "ytsearch:" + query;
         }

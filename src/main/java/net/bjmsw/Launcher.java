@@ -12,6 +12,7 @@ import com.sedmelluq.discord.lavaplayer.source.vimeo.VimeoAudioSourceManager;
 import com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager;
 import net.bjmsw.io.Config;
 import net.bjmsw.listener.EventListener;
+import net.bjmsw.manager.GuildPlayerManager;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
@@ -43,6 +44,8 @@ public class Launcher {
         apm.registerSourceManager(new HttpAudioSourceManager());
         apm.registerSourceManager(new LocalAudioSourceManager());
 
+        GuildPlayerManager gpm = new GuildPlayerManager(apm);
+
         if (config.getToken().equalsIgnoreCase("PUT-YOUR-TOKEN-HERE")) {
             System.out.println("Please put your token in the config.json file!");
             System.exit(0);
@@ -51,7 +54,7 @@ public class Launcher {
 
         JDABuilder builder = JDABuilder.createDefault(config.getToken())
                 .setActivity(Activity.listening(" some great music | momobot2"))
-                .addEventListeners(new EventListener(apm));
+                .addEventListeners(new EventListener(apm, gpm));
 
         jda = builder.build();
 
@@ -60,7 +63,8 @@ public class Launcher {
                 Commands.slash("play", "Play a song from youtube")
                         .addOption(OptionType.STRING, "query", "The search query or youtube link", true),
                 Commands.slash("add", "Add a song to the queue (if queue is empty, it will play the song)")
-                        .addOption(OptionType.STRING, "query", "The search query or youtube link", true)
+                        .addOption(OptionType.STRING, "query", "The search query or youtube link", true),
+                Commands.slash("test", "Test command")
         ).queue();
 
 
