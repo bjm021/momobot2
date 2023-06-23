@@ -1,6 +1,6 @@
 # momobot2
 
-![enter image description here](http://cdn.bjm.hesteig.com/momobanner.png)
+![enter image description here](https://cdn.bjmsw.net/img/momobot2.png)
 
 Momobot2 is the successor of [momobot](https://github.com/bjm021/momobot)
 <br>Rewritten completely to use the new Discord Bot API.
