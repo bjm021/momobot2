@@ -1,7 +1,6 @@
 package net.bjmsw.listener;
 
 import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
-import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
@@ -9,6 +8,7 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import net.bjmsw.Launcher;
 import net.bjmsw.manager.GuildPlayerManager;
 import net.bjmsw.util.AudioPlayerSendHandler;
+import net.bjmsw.util.MusicScheduler;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
@@ -23,7 +23,7 @@ import net.dv8tion.jda.api.utils.messages.MessageCreateData;
 import java.util.ArrayList;
 import java.util.List;
 
-public class EventListener extends ListenerAdapter {
+public class JDAEventListener extends ListenerAdapter {
 
     private enum PlayerState {
         PLAYING,
@@ -33,11 +33,13 @@ public class EventListener extends ListenerAdapter {
 
     private AudioPlayerManager apm;
     private GuildPlayerManager gpm;
-    EventListener.PlayerState state = EventListener.PlayerState.STOPPED;
+    private MusicScheduler scheduler;
+    JDAEventListener.PlayerState state = JDAEventListener.PlayerState.STOPPED;
 
-    public EventListener(AudioPlayerManager apm, GuildPlayerManager gpm) {
+    public JDAEventListener(AudioPlayerManager apm, GuildPlayerManager gpm, MusicScheduler scheduler) {
         this.apm = apm;
         this.gpm = gpm;
+        this.scheduler = scheduler;
     }
 
     @Override
@@ -47,7 +49,10 @@ public class EventListener extends ListenerAdapter {
             var query = event.getOption("query").getAsString();
             event.deferReply().setEphemeral(true).queue();
             if (Launcher.DEBUG) System.out.println("Query: " + query);
-            playTrack(query, true, event);
+            if (event.getOption("skip-queue") != null)
+                playTrack(query, event.getOption("skip-queue").getAsBoolean(), event);
+            else
+                playTrack(query, false, event);
         } else if (event.getName().equalsIgnoreCase("eq")) {
             event.reply("Equalizer Controls")
                     .addActionRow(
@@ -89,16 +94,21 @@ public class EventListener extends ListenerAdapter {
             player.setPaused(false);
             state = PlayerState.PLAYING;
             event.editButton(Button.primary("pause", "Pause")).queue();
+        } else if (event.getComponentId().equalsIgnoreCase("skip")) {
+            if (!scheduler.playNextTrack(event.getGuild().getId()))
+                event.reply("There are no more tracks in the queue!").queue();
         }
     }
 
     @Override
     public void onStringSelectInteraction(StringSelectInteractionEvent event) {
-        if (event.getComponentId().equalsIgnoreCase("select-track-search-result")) {
+        boolean skip = Boolean.parseBoolean(event.getComponentId().split(":")[1]);
+
+        if (event.getComponentId().startsWith("select-track-search-result")) {
             event.deferReply().queue();
             var query = event.getSelectedOptions().get(0).getValue();
             if (Launcher.DEBUG) System.out.println("Query: " + query);
-            playTrack(query, true, event);
+            playTrack(query, skip, event);
         }
     }
 
@@ -121,29 +131,22 @@ public class EventListener extends ListenerAdapter {
             public void trackLoaded(AudioTrack track) {
                 event.getGuild().getAudioManager().openAudioConnection(vc);
                 event.getGuild().getAudioManager().setSendingHandler(new AudioPlayerSendHandler(player));
-                player.playTrack(track);
 
-
-                try (MessageCreateData message = new MessageCreateBuilder().setContent("Now playing: " + track.getInfo().title + "(" + track.getInfo().uri + ")")
-                        .addActionRow(
-                                Button.primary("pause", "Pause"),
-                                Button.danger("stop", "Stop")
-                        ).build()) {
-                    if (event instanceof SlashCommandInteractionEvent) {
-                        System.out.println("DEBUG: Sending ephemeral message SlashCommandInteractionEvent");
-                        ((SlashCommandInteractionEvent) event).getHook().sendMessage(message).setEphemeral(false).queue();
-                    } else if (event instanceof StringSelectInteractionEvent) {
-                        System.out.println("DEBUG: Sending ephemeral message StringSelectInteractionEvent");
-                        ((StringSelectInteractionEvent) event).getHook().sendMessage(message).setEphemeral(false).queue();
-                    } else {
-                        System.out.println("DEBUG: Sending ephemeral message GenericInteractionCreateEvent");
-                        event.getMessageChannel().sendMessage(message).queue();
+                if (now) {
+                    scheduler.insertTrack(track, event.getGuild().getId());
+                    try (MessageCreateData message = new MessageCreateBuilder().setContent("Starting track: " + track.getInfo().title + " (" + track.getInfo().uri + ")")
+                            .addActionRow(
+                                    Button.primary("pause", "Pause"),
+                                    Button.danger("stop", "Stop"),
+                                    Button.primary("skip", "Skip")
+                            ).build()) {
+                        dispatchMessageAsEventReply(event, message, false);
                     }
+                } else {
+                    MessageCreateData message = new MessageCreateBuilder().setContent("Added to queue: " + track.getInfo().title).build();
+                    scheduler.addTrack(track, event.getGuild().getId());
+                    dispatchMessageAsEventReply(event, message, false);
                 }
-
-
-
-                state = PlayerState.PLAYING;
 
 
             }
@@ -156,26 +159,19 @@ public class EventListener extends ListenerAdapter {
                         options.add(SelectOption.of(track.getInfo().title, track.getInfo().uri));
                     }
 
+                    var selectionID = "select-track-search-result-skip:" + now;
+                    System.out.println("DEBUG: Selection ID: " + selectionID);
                     MessageCreateBuilder builder = new MessageCreateBuilder();
                     builder.setContent("The following tracks have been found:");
                     builder.addActionRow(
-                            StringSelectMenu.create("select-track-search-result")
+                            StringSelectMenu.create(selectionID)
                                     .setPlaceholder("Select a track")
                                     .addOptions(options)
                                     .build()
 
                     );
 
-                    if (event instanceof SlashCommandInteractionEvent) {
-                        System.out.println("DEBUG: Sending ephemeral message SlashCommandInteractionEvent");
-                        ((SlashCommandInteractionEvent) event).getHook().sendMessage(builder.build()).setEphemeral(true).queue();
-                    } else if (event instanceof StringSelectInteractionEvent) {
-                        System.out.println("DEBUG: Sending ephemeral message StringSelectInteractionEvent");
-                        ((StringSelectInteractionEvent) event).getHook().sendMessage(builder.build()).setEphemeral(true).queue();
-                    } else {
-                        System.out.println("DEBUG: Sending message");
-                        event.getMessageChannel().sendMessage(builder.build()).queue();
-                    }
+                    dispatchMessageAsEventReply(event, builder.build(), true);
 
 
                 }
@@ -191,5 +187,18 @@ public class EventListener extends ListenerAdapter {
 
             }
         });
+    }
+
+    private void dispatchMessageAsEventReply(GenericInteractionCreateEvent event, MessageCreateData message, boolean ephemeral) {
+        if (event instanceof SlashCommandInteractionEvent) {
+            System.out.println("DEBUG: Sending ephemeral message SlashCommandInteractionEvent");
+            ((SlashCommandInteractionEvent) event).getHook().sendMessage(message).setEphemeral(ephemeral).queue();
+        } else if (event instanceof StringSelectInteractionEvent) {
+            System.out.println("DEBUG: Sending ephemeral message StringSelectInteractionEvent");
+            ((StringSelectInteractionEvent) event).getHook().sendMessage(message).setEphemeral(ephemeral).queue();
+        } else {
+            System.out.println("DEBUG: Sending ephemeral message GenericInteractionCreateEvent");
+            event.getMessageChannel().sendMessage(message).queue();
+        }
     }
 }

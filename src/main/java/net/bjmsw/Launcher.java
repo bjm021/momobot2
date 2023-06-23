@@ -11,8 +11,9 @@ import com.sedmelluq.discord.lavaplayer.source.twitch.TwitchStreamAudioSourceMan
 import com.sedmelluq.discord.lavaplayer.source.vimeo.VimeoAudioSourceManager;
 import com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager;
 import net.bjmsw.io.Config;
-import net.bjmsw.listener.EventListener;
+import net.bjmsw.listener.JDAEventListener;
 import net.bjmsw.manager.GuildPlayerManager;
+import net.bjmsw.util.MusicScheduler;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
@@ -24,9 +25,10 @@ public class Launcher {
     private static AudioPlayerManager apm;
     private static JDA jda;
 
+    private static MusicScheduler scheduler;
+
 
     public static final boolean DEBUG = true;
-
 
 
     public static void main(String[] args) {
@@ -51,17 +53,24 @@ public class Launcher {
             System.exit(0);
         }
 
+        scheduler = new MusicScheduler(apm, gpm);
+
 
         JDABuilder builder = JDABuilder.createDefault(config.getToken())
                 .setActivity(Activity.listening(" some great music | momobot2"))
-                .addEventListeners(new EventListener(apm, gpm));
+                .addEventListeners(new JDAEventListener(apm, gpm, scheduler));
 
         jda = builder.build();
 
         jda.updateCommands().addCommands(
                 Commands.slash("eq", "Manipulate the eq"),
                 Commands.slash("play", "Play a song from youtube")
-                        .addOption(OptionType.STRING, "query", "The search query or youtube link", true),
+                        .addOption(
+                                OptionType.STRING, "query", "The search query or youtube link", true
+                        )
+                        .addOption(
+                                OptionType.BOOLEAN, "skip-queue", "Whether to skip the queue or not", false
+                        ),
                 Commands.slash("add", "Add a song to the queue (if queue is empty, it will play the song)")
                         .addOption(OptionType.STRING, "query", "The search query or youtube link", true),
                 Commands.slash("test", "Test command")
@@ -76,5 +85,9 @@ public class Launcher {
 
     public static AudioPlayerManager getApm() {
         return apm;
+    }
+
+    public static MusicScheduler getScheduler() {
+        return scheduler;
     }
 }
