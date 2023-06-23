@@ -11,9 +11,12 @@ import com.sedmelluq.discord.lavaplayer.source.twitch.TwitchStreamAudioSourceMan
 import com.sedmelluq.discord.lavaplayer.source.vimeo.VimeoAudioSourceManager;
 import com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager;
 import net.bjmsw.io.Config;
+import net.bjmsw.io.SDConfigFile;
 import net.bjmsw.listener.JDAEventListener;
 import net.bjmsw.manager.GuildPlayerManager;
+import net.bjmsw.model.SDConfig;
 import net.bjmsw.util.MusicScheduler;
+import net.bjmsw.util.StableDiffusion;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Activity;
@@ -24,6 +27,8 @@ public class Launcher {
 
     private static AudioPlayerManager apm;
     private static JDA jda;
+    private static StableDiffusion stableDiffusion;
+    private static SDConfigFile sdConfigFile;
 
     private static MusicScheduler scheduler;
 
@@ -35,6 +40,7 @@ public class Launcher {
         System.out.println("Hello world!");
 
         Config config = new Config();
+        sdConfigFile = new SDConfigFile();
 
         apm = new DefaultAudioPlayerManager();
         apm.registerSourceManager(new YoutubeAudioSourceManager());
@@ -47,6 +53,8 @@ public class Launcher {
         apm.registerSourceManager(new LocalAudioSourceManager());
 
         GuildPlayerManager gpm = new GuildPlayerManager(apm);
+
+        stableDiffusion = new StableDiffusion(config.getSD_url());
 
         if (config.getToken().equalsIgnoreCase("PUT-YOUR-TOKEN-HERE")) {
             System.out.println("Please put your token in the config.json file!");
@@ -73,7 +81,9 @@ public class Launcher {
                         ),
                 Commands.slash("add", "Add a song to the queue (if queue is empty, it will play the song)")
                         .addOption(OptionType.STRING, "query", "The search query or youtube link", true),
-                Commands.slash("test", "Test command")
+                Commands.slash("test", "Test command"),
+                Commands.slash("txt2img", "Create a stable diffusion image from text (only works when the provider server is online)"),
+                Commands.slash("sd-config", "Configure Stable-Diffusion Settings fot your guild")
         ).queue();
 
 
@@ -89,5 +99,13 @@ public class Launcher {
 
     public static MusicScheduler getScheduler() {
         return scheduler;
+    }
+
+    public static StableDiffusion getStableDiffusion() {
+        return stableDiffusion;
+    }
+
+    public static SDConfigFile getSdConfigFile() {
+        return sdConfigFile;
     }
 }

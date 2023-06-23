@@ -1,0 +1,16 @@
+{
+    "guild-id": {
+        "samplerSteps": 1,
+        "defaultNegativePrompt": "defaultNegativePrompt",
+        "cfgScale": 1,
+        "guildId": "guild-id",
+        "sampler": "sampler"
+    },
+    "338359178932256768": {
+        "samplerSteps": 30,
+        "defaultNegativePrompt": "((big hands, un-detailed skin, semi-realistic, cgi, 3d, render, sketch, cartoon, drawing, anime)), (ugly mouth, ugly eyes, missing teeth, crooked teeth, close up, cropped, out of frame), worst quality, low quality, jpeg artifacts, ugly, duplicate, morbid, mutilated, extra fingers, mutated hands, poorly drawn hands, poorly drawn face, mutation, deformed, blurry, dehydrated, bad anatomy, bad proportions, extra limbs, cloned face, disfigured, gross proportions, malformed limbs, missing arms, missing legs, extra arms, extra legs, fused fingers, too many fingers, long neck",
+        "cfgScale": 7,
+        "guildId": "338359178932256768",
+        "sampler": "DDIM"
+    }
+}

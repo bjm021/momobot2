@@ -6,10 +6,13 @@ import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import net.bjmsw.Launcher;
+import net.bjmsw.io.SDConfigFile;
 import net.bjmsw.manager.GuildPlayerManager;
+import net.bjmsw.model.SDConfig;
 import net.bjmsw.util.AudioPlayerSendHandler;
 import net.bjmsw.util.MusicScheduler;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
+import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.component.StringSelectInteractionEvent;
@@ -17,9 +20,15 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.selections.SelectOption;
 import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
+import net.dv8tion.jda.api.interactions.components.text.TextInput;
+import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
+import net.dv8tion.jda.api.interactions.modals.Modal;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
+import org.apache.commons.codec.binary.StringUtils;
+import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -62,9 +71,114 @@ public class JDAEventListener extends ListenerAdapter {
                             Button.primary("eq-soft", "Soft"),
                             Button.primary("eq-trebleboost", "Treble Boost")
                     ).setEphemeral(true).queue();
-        } else if (event.getName().equalsIgnoreCase("test")) {
-            System.out.println(gpm.getPlayerForGuild(event.getGuild().getId()).getPlayingTrack());
-            event.reply(gpm.getPlayerForGuild(event.getGuild().getId()).getPlayingTrack().toString()).setEphemeral(true).queue();
+        } else if (event.getName().equalsIgnoreCase("txt2img")) {
+            SDConfig config = Launcher.getSdConfigFile().getConfig(event.getGuild().getId());
+            var samplerSteps = "20";
+            if (config != null) samplerSteps = String.valueOf(config.getSamplerSteps());
+            event.replyModal(
+                    Modal.create("sd-text2img", "SD txt2img generator")
+                            .addActionRow(
+                                    TextInput.create("sd-prompt", "Image prompt", TextInputStyle.PARAGRAPH)
+                                            .setPlaceholder("Enter the prompt for the image (or leave blank to use the last prompt)")
+                                            .setRequired(false)
+                                            .build()
+                            )
+                            .addActionRow(
+                                    TextInput.create("sd-negative-prompt", "Negative Image prompt", TextInputStyle.PARAGRAPH)
+                                            .setPlaceholder("Enter the prompt for the negative image (or leave blank to use the last prompt)")
+                                            .setRequired(false)
+                                            .build()
+                            )
+                            .addActionRow(
+                                    TextInput.create("sd-batch-size", "Batch Size (num of images)", TextInputStyle.SHORT)
+                                            .setValue("1")
+                                            .setPlaceholder("Enter the number of images you want to be created")
+                                            .setRequired(true)
+                                            .build()
+                            )
+                            .addActionRow(
+                                    TextInput.create("sd-steps", "Sampler Steps", TextInputStyle.SHORT)
+                                            .setValue(samplerSteps)
+                                            .setPlaceholder("Enter the number of steps to use for the sampler")
+                                            .setRequired(true)
+                                            .build()
+                            )
+                            .build()
+            ).queue();
+
+
+        } else if (event.getName().equalsIgnoreCase("sd-config")) {
+            boolean hasConfig = Launcher.getSdConfigFile().getConfig(event.getGuild().getId()) != null;
+            SDConfig sdConfig = null;
+
+            if (hasConfig) {
+                sdConfig = Launcher.getSdConfigFile().getConfig(event.getGuild().getId());
+
+                event.replyModal(
+                        Modal.create("sd-configure", "StableDiffusion Configuration")
+                                .addActionRow(
+                                        TextInput.create("sd-default-negative-prompt", "Default Negative Prompt", TextInputStyle.PARAGRAPH)
+                                                .setPlaceholder("Enter the default negative prompt")
+                                                .setValue(sdConfig.getDefaultNegativePrompt())
+                                                .setRequired(true)
+                                                .build()
+                                )
+                                .addActionRow(
+                                        TextInput.create("sd-default-steps", "Default Sampler Steps", TextInputStyle.SHORT)
+                                                .setPlaceholder("Enter the default steps")
+                                                .setValue(String.valueOf(sdConfig.getSamplerSteps()))
+                                                .setRequired(true)
+                                                .build()
+                                )
+                                .addActionRow(
+                                        TextInput.create("sd-default-cfg-scale", "Default CFG-Scale", TextInputStyle.SHORT)
+                                                .setPlaceholder("Enter the default scale")
+                                                .setValue(String.valueOf(sdConfig.getCfgScale()))
+                                                .setRequired(true)
+                                                .build()
+                                )
+                                .addActionRow(
+                                        TextInput.create("sd-default-sampler", "Default Sampler Name", TextInputStyle.SHORT)
+                                                .setPlaceholder("Enter the default sampler")
+                                                .setValue(sdConfig.getSampler())
+                                                .setRequired(true)
+                                                .build()
+                                )
+                                .build()
+                ).queue();
+            } else {
+                event.replyModal(
+                        Modal.create("sd-configure", "StableDiffusion Configuration")
+                                .addActionRow(
+                                        TextInput.create("sd-default-negative-prompt", "Default Negative Prompt", TextInputStyle.PARAGRAPH)
+                                                .setPlaceholder("Enter the default negative prompt")
+                                                .setRequired(true)
+                                                .build()
+                                )
+                                .addActionRow(
+                                        TextInput.create("sd-default-steps", "Sampler Steps", TextInputStyle.SHORT)
+                                                .setPlaceholder("Enter the default steps")
+                                                .setRequired(true)
+                                                .build()
+                                )
+                                .addActionRow(
+                                        TextInput.create("sd-default-cfg-scale", "CFG-Scale", TextInputStyle.SHORT)
+                                                .setPlaceholder("Enter the default scale")
+                                                .setRequired(true)
+                                                .build()
+                                )
+                                .addActionRow(
+                                        TextInput.create("sd-default-sampler", "Sampler Name", TextInputStyle.SHORT)
+                                                .setPlaceholder("Enter the default sampler")
+                                                .setRequired(true)
+                                                .build()
+                                )
+                                .build()
+                ).queue();
+            }
+
+
+
         }
     }
 
@@ -82,9 +196,9 @@ public class JDAEventListener extends ListenerAdapter {
             state = PlayerState.PAUSED;
         } else if (event.getComponentId().equalsIgnoreCase("stop")) {
             player.stopTrack();
-            event.getHook().sendMessage("Stopped!").queue();
+            //event.getHook().sendMessage("Stopped!").queue();
             event.getGuild().getAudioManager().closeAudioConnection();
-            event.reply("Stopped!").setEphemeral(true).queue();
+            event.reply("Stopped!").setEphemeral(false).queue();
             state = PlayerState.STOPPED;
         } else if (event.getComponentId().equalsIgnoreCase("resume")) {
             if (player.getPlayingTrack() == null) {
@@ -95,16 +209,58 @@ public class JDAEventListener extends ListenerAdapter {
             state = PlayerState.PLAYING;
             event.editButton(Button.primary("pause", "Pause")).queue();
         } else if (event.getComponentId().equalsIgnoreCase("skip")) {
-            if (!scheduler.playNextTrack(event.getGuild().getId()))
-                event.reply("There are no more tracks in the queue!").queue();
+           scheduler.playNextTrack(event.getGuild().getId(), event);
+        }
+    }
+
+    @Override
+    public void onModalInteraction(ModalInteractionEvent event) {
+        if (event.getModalId().equals("sd-text2img")) {
+            var prompt = event.getValue("sd-prompt").getAsString();
+            var negativePrompt = event.getValue("sd-negative-prompt").getAsString();
+            try {
+                Integer.parseInt(event.getValue("sd-batch-size").getAsString());
+                Integer.parseInt(event.getValue("sd-steps").getAsString());
+            } catch (NumberFormatException e) {
+                event.reply("Invalid modal inputs in numeric fields (at least one input was not numeric)!").setEphemeral(true).queue();
+                return;
+            }
+            int batchSize = Integer.parseInt(event.getValue("sd-batch-size").getAsString());
+            int steps = Integer.parseInt(event.getValue("sd-steps").getAsString());
+            Launcher.getStableDiffusion().txt2img(prompt, negativePrompt, batchSize, steps, event);
+        } else if (event.getModalId().equalsIgnoreCase("sd-configure")) {
+
+            try {
+                Integer.parseInt(event.getValue("sd-default-steps").getAsString());
+                Integer.parseInt(event.getValue("sd-default-cfg-scale").getAsString());
+            } catch (NumberFormatException e) {
+                event.reply("Invalid modal inputs in numeric fields (at least one input was not numeric)!").setEphemeral(true).queue();
+                return;
+            }
+
+            SDConfig sdConfig = new SDConfig(
+                    event.getGuild().getId(),
+                    event.getValue("sd-default-negative-prompt").getAsString(),
+                    Integer.parseInt(event.getValue("sd-default-steps").getAsString()),
+                    Integer.parseInt(event.getValue("sd-default-cfg-scale").getAsString()),
+                    event.getValue("sd-default-sampler").getAsString()
+            );
+
+            try {
+                Launcher.getSdConfigFile().addConfig(sdConfig);
+                event.reply("Successfully saved the configuration!").setEphemeral(true).queue();
+            } catch (IOException e) {
+                event.reply("An error occurred while saving the configuration!").setEphemeral(true).queue();
+                throw new RuntimeException(e);
+            }
+
         }
     }
 
     @Override
     public void onStringSelectInteraction(StringSelectInteractionEvent event) {
-        boolean skip = Boolean.parseBoolean(event.getComponentId().split(":")[1]);
-
         if (event.getComponentId().startsWith("select-track-search-result")) {
+            boolean skip = Boolean.parseBoolean(event.getComponentId().split(":")[1]);
             event.deferReply().queue();
             var query = event.getSelectedOptions().get(0).getValue();
             if (Launcher.DEBUG) System.out.println("Query: " + query);

@@ -7,6 +7,7 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackEndReason;
 import net.bjmsw.Launcher;
 import net.bjmsw.manager.GuildPlayerManager;
+import net.dv8tion.jda.api.events.interaction.component.ButtonInteractionEvent;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 
 import java.util.*;
@@ -29,6 +30,15 @@ public class MusicScheduler extends AudioEventAdapter {
         guildQueues.get(guildId).add(track);
         if (gpm.getPlayerForGuild(guildId).getPlayingTrack() == null)
             playNextTrack(guildId);
+    }
+
+    public void playNextTrack(String guildId, ButtonInteractionEvent event) {
+        if (guildQueues.get(guildId).isEmpty()) {
+            event.reply("There are no more tracks in the queue!").queue();
+            return;
+        }
+        event.reply("Skipped " + gpm.getPlayerForGuild(guildId).getPlayingTrack().getInfo().title).queue();
+        playNextTrack(guildId);
     }
 
     public boolean playNextTrack(String guildId) {
@@ -71,7 +81,7 @@ public class MusicScheduler extends AudioEventAdapter {
             Launcher.getJda().getGuildById(guildId).getAudioManager().closeAudioConnection();
             Launcher.getJda().getGuildById(guildId).getDefaultChannel().asTextChannel().sendMessage("Queue finished.").queue();
         } else {
-            Launcher.getJda().getGuildById(guildId).getDefaultChannel().asTextChannel().sendMessage(String.format("Track %s finished, now playing %s (%s).", track.getInfo().title, guildQueues.get(guildId).peek().getInfo().title, guildQueues.get(guildId).peek().getInfo().uri)).queue();
+            Launcher.getJda().getGuildById(guildId).getDefaultChannel().asTextChannel().sendMessage(String.format("Track %s finished", guildQueues.get(guildId).peek().getInfo().title, guildQueues.get(guildId).peek().getInfo().uri)).queue();
             playNextTrack(guildId);
         }
 
