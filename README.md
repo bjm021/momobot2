@@ -13,7 +13,7 @@ As this is a complete rewrite of the original bot, some features are still missi
 As stated this is a simple bot and should be no more. Expect standard music bot functionality.
 
 - Standard music bot functionality
-- Manipulate EQ on the fly (planned)
+- Manipulate EQ on the fly (partially implemented)
 - Load and Save queues (at least up to 8 latest entries) (planned)
 - more in the future  
 

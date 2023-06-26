@@ -1,5 +1,6 @@
 package net.bjmsw.manager;
 
+import com.sedmelluq.discord.lavaplayer.filter.equalizer.EqualizerFactory;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import net.bjmsw.Launcher;
@@ -15,10 +16,12 @@ public class GuildPlayerManager {
     AudioPlayerManager apm;
 
     private BidiMap<String, AudioPlayer> guildPlayers;
+    private BidiMap<String, EqualizerFactory> guildEqualizers;
 
     public GuildPlayerManager(AudioPlayerManager apm) {
         this.apm = apm;
         this.guildPlayers = new DualHashBidiMap<>();
+        this.guildEqualizers = new DualHashBidiMap<>();
     }
 
     public AudioPlayer getPlayerForGuild(String guildId) {
@@ -32,6 +35,18 @@ public class GuildPlayerManager {
 
     public String getGuildForPlayer(AudioPlayer player) {
         return guildPlayers.getKey(player);
+    }
+
+    public EqualizerFactory getEqualizerForGuild(String guildId) {
+        if (!guildEqualizers.containsKey(guildId)) {
+            var equalizer = new EqualizerFactory();
+            guildEqualizers.put(guildId, equalizer);
+        }
+        return guildEqualizers.get(guildId);
+    }
+
+    public String getGuildForEqualizer(EqualizerFactory equalizer) {
+        return guildEqualizers.getKey(equalizer);
     }
 
 }

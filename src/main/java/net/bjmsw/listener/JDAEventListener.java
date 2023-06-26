@@ -1,5 +1,6 @@
 package net.bjmsw.listener;
 
+import com.sedmelluq.discord.lavaplayer.filter.equalizer.EqualizerFactory;
 import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
@@ -43,6 +44,11 @@ public class JDAEventListener extends ListenerAdapter {
     private AudioPlayerManager apm;
     private GuildPlayerManager gpm;
     private MusicScheduler scheduler;
+
+    private static final float[] BASS_BOOST = {0.2f, 0.15f, 0.1f, 0.05f, 0.0f, -0.05f, -0.1f, -0.1f, -0.1f, -0.1f, -0.1f,
+            -0.1f, -0.1f, -0.1f, -0.1f};
+
+
     JDAEventListener.PlayerState state = JDAEventListener.PlayerState.STOPPED;
 
     public JDAEventListener(AudioPlayerManager apm, GuildPlayerManager gpm, MusicScheduler scheduler) {
@@ -66,10 +72,7 @@ public class JDAEventListener extends ListenerAdapter {
             event.reply("Equalizer Controls")
                     .addActionRow(
                             Button.primary("eq-bassboost", "Bass Boost"),
-                            Button.primary("eq-normal", "Normal"),
-                            Button.primary("eq-piano", "Piano"),
-                            Button.primary("eq-soft", "Soft"),
-                            Button.primary("eq-trebleboost", "Treble Boost")
+                            Button.primary("eq-normal", "Normal")
                     ).setEphemeral(true).queue();
         } else if (event.getName().equalsIgnoreCase("txt2img")) {
             SDConfig config = Launcher.getSdConfigFile().getConfig(event.getGuild().getId());
@@ -210,6 +213,20 @@ public class JDAEventListener extends ListenerAdapter {
             event.editButton(Button.primary("pause", "Pause")).queue();
         } else if (event.getComponentId().equalsIgnoreCase("skip")) {
            scheduler.playNextTrack(event.getGuild().getId(), event);
+        } else if (event.getComponentId().equalsIgnoreCase("eq-bassboost")) {
+            event.reply("Enabling bassboost! Be prepared!").setEphemeral(true).queue();
+            var bassBoost = gpm.getEqualizerForGuild(event.getGuild().getId());
+            player.setFilterFactory(bassBoost);
+            for (int i = 0; i < BASS_BOOST.length; i++) {
+                bassBoost.setGain(i, BASS_BOOST[i] + 2);
+            }
+        } else if (event.getComponentId().equalsIgnoreCase("eq-normal")) {
+            event.reply("Disabling eq filters!").setEphemeral(true).queue();
+            player.setFilterFactory(null);
+        } else if (event.getComponentId().equalsIgnoreCase("eq-piano")) {
+            var piano = gpm.getEqualizerForGuild(event.getGuild().getId());
+            player.setFilterFactory(piano);
+
         }
     }
 
