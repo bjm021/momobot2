@@ -7,10 +7,15 @@ import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import net.bjmsw.Launcher;
 import net.bjmsw.manager.GuildPlayerManager;
+import net.bjmsw.model.ChannelIDConfig;
 import net.bjmsw.model.SDConfig;
 import net.bjmsw.util.AudioPlayerSendHandler;
+import net.bjmsw.util.InspiroBot;
 import net.bjmsw.util.MusicScheduler;
+import net.bjmsw.util.StaticMessages;
 import net.dv8tion.jda.api.EmbedBuilder;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -25,6 +30,8 @@ import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
 import net.dv8tion.jda.api.interactions.modals.Modal;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
+import org.apache.commons.collections4.BidiMap;
+import org.apache.commons.collections4.bidimap.DualHashBidiMap;
 
 import java.awt.*;
 import java.io.IOException;
@@ -34,6 +41,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class JDAEventListener extends ListenerAdapter {
 
+    private BidiMap<String, String> guildVCIDs = new DualHashBidiMap<>();
+    private BidiMap<String, String> guildTCIDs = new DualHashBidiMap<>();
     private enum PlayerState {
         PLAYING,
         PAUSED,
@@ -58,6 +67,7 @@ public class JDAEventListener extends ListenerAdapter {
 
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
+        checkChanelIDConfig(event.getGuild().getId());
         if (event.getName().equalsIgnoreCase("play")) {
             //event.deferReply().queue();
             var query = event.getOption("query").getAsString();
@@ -197,7 +207,33 @@ public class JDAEventListener extends ListenerAdapter {
                 counter.getAndIncrement();
             });
             eb.setColor(Color.CYAN);
-            event.replyEmbeds(eb.build()).queue();
+            var empheral = true;
+            if ((guildTCIDs.containsKey(event.getGuild().getId()) && guildTCIDs.get(event.getGuild().getId()).equals(event.getChannel().getId()))
+                    || (!guildTCIDs.containsKey(event.getGuild().getId()) && event.getChannel().getId().equals(event.getGuild().getSystemChannel().getId())))
+                empheral = false;
+            event.replyEmbeds(eb.build()).setEphemeral(empheral).queue();
+        } else if (event.getName().equals("inspiro")) {
+            event.deferReply().queue();
+            InspiroBot.inspiro(event);
+        } else if (event.getName().equals("help")) {
+            StaticMessages.help(event);
+        } else if (event.getName().equals("configure-channels")) {
+            event.replyModal(
+                    Modal.create("configure-channels", "Configure Bot Channels")
+                            .addActionRow(
+                                    TextInput.create("bot-vc-id", "Bot Voice Channel ID", TextInputStyle.SHORT)
+                                            .setPlaceholder("Enter the ID of the voice channel you want the bot to join")
+                                            .setRequired(true)
+                                            .build()
+                            )
+                            .addActionRow(
+                                    TextInput.create("bot-tc-id", "Bot Text Channel ID", TextInputStyle.SHORT)
+                                            .setPlaceholder("Enter the ID of the text channel you want the bot to use for status messaged")
+                                            .setRequired(true)
+                                            .build()
+                            )
+                            .build()
+            ).queue();
         }
     }
 
@@ -242,7 +278,6 @@ public class JDAEventListener extends ListenerAdapter {
         } else if (event.getComponentId().equalsIgnoreCase("eq-piano")) {
             var piano = gpm.getEqualizerForGuild(event.getGuild().getId());
             player.setFilterFactory(piano);
-
         }
     }
 
@@ -287,6 +322,13 @@ public class JDAEventListener extends ListenerAdapter {
                 throw new RuntimeException(e);
             }
 
+        } else if (event.getModalId().equals("configure-channels")) {
+            ChannelIDConfig config = new ChannelIDConfig(
+                    event.getValue("bot-vc-id").getAsString(),
+                    event.getValue("bot-tc-id").getAsString()
+            );
+            Launcher.getConfig().saveChannelIDsForGuild(event.getGuild().getId(), config);
+            event.reply("Successfully saved the configuration!").setEphemeral(true).queue();
         }
     }
 
@@ -294,7 +336,7 @@ public class JDAEventListener extends ListenerAdapter {
     public void onStringSelectInteraction(StringSelectInteractionEvent event) {
         if (event.getComponentId().startsWith("select-track-search-result")) {
             boolean skip = Boolean.parseBoolean(event.getComponentId().split(":")[1]);
-            event.deferReply().queue();
+            event.deferReply().setEphemeral(true).queue();
             var query = event.getSelectedOptions().get(0).getValue();
             if (Launcher.DEBUG) System.out.println("Query: " + query);
             playTrack(query, skip, event);
@@ -307,13 +349,26 @@ public class JDAEventListener extends ListenerAdapter {
             query = "ytsearch:" + query;
         }
 
+        TextChannel tc;
+        if (guildTCIDs.containsKey(event.getGuild().getId())) {
+            tc = event.getGuild().getTextChannelById(guildTCIDs.get(event.getGuild().getId()));
+        } else {
+            tc = event.getGuild().getDefaultChannel().asTextChannel();
+        }
+
         var vcs = event.getGuild().getVoiceChannels();
         if (vcs.isEmpty()) {
             event.getMessageChannel().sendMessage("There are no voice channels on this server!").queue();
             //event.getHook().sendMessage("There are no voice channels on this server!").queue();
             return;
         }
-        var vc = vcs.get(0);
+
+        VoiceChannel vc;
+        if (guildVCIDs.containsKey(event.getGuild().getId())) {
+            vc = event.getGuild().getVoiceChannelById(guildVCIDs.get(event.getGuild().getId()));
+        } else {
+            vc = vcs.get(0);
+        }
 
         String finalQuery = query;
         Launcher.getApm().loadItem(query, new AudioLoadResultHandler() {
@@ -324,15 +379,10 @@ public class JDAEventListener extends ListenerAdapter {
 
                 if (now) {
                     scheduler.insertTrack(track, event.getGuild().getId());
-                    try (MessageCreateData message = new MessageCreateBuilder().setContent("Loaded Track: " + track.getInfo().title)
-                            .addActionRow(
-                                    Button.primary("pause", "Pause"),
-                                    Button.danger("stop", "Stop"),
-                                    Button.primary("skip", "Skip")
-                            ).build()) {
-                        dispatchMessageAsEventReply(event, message, false);
+                    try (MessageCreateData message = new MessageCreateBuilder().setContent("Loaded Track: " + track.getInfo().title).build()) {
+                        dispatchMessageAsEventReply(event, message, true);
                     }
-                    event.getMessageChannel().sendMessage("Starting Track: " + track.getInfo().title + " (" + track.getInfo().uri + ")")
+                    tc.sendMessage("Starting Track: " + track.getInfo().title + " (" + track.getInfo().uri + ") [" + event.getUser().getEffectiveName() + "]")
                             .addActionRow(
                                     Button.primary("pause", "Pause"),
                                     Button.danger("stop", "Stop"),
@@ -342,7 +392,8 @@ public class JDAEventListener extends ListenerAdapter {
                 } else {
                     MessageCreateData message = new MessageCreateBuilder().setContent("Added to queue: " + track.getInfo().title).build();
                     scheduler.addTrack(track, event.getGuild().getId());
-                    dispatchMessageAsEventReply(event, message, false);
+                    dispatchMessageAsEventReply(event, message, true);
+                    dispatchMessageInCorrectChannel(event, message, false);
                 }
 
 
@@ -373,16 +424,16 @@ public class JDAEventListener extends ListenerAdapter {
 
 
                 } else {
+                    MessageCreateBuilder builder = new MessageCreateBuilder();
+                    builder.setContent("Playlist " + playlist.getName() + " successfully loaded");
+                    dispatchMessageAsEventReply(event, builder.build(), true);
+                    tc.sendMessage("Playlist loaded: " + playlist.getName()).queue();
+
                     event.getGuild().getAudioManager().openAudioConnection(vc);
                     event.getGuild().getAudioManager().setSendingHandler(new AudioPlayerSendHandler(player));
                     playlist.getTracks().forEach(track -> {
                         scheduler.addTrack(track, event.getGuild().getId());
                     });
-
-                    MessageCreateBuilder builder = new MessageCreateBuilder();
-                    builder.setContent("Playlist successfully loaded");
-                    dispatchMessageAsEventReply(event, builder.build(), false);
-                    event.getMessageChannel().sendMessage("Playlist loaded: " + playlist.getName()).queue();
                 }
             }
 
@@ -390,7 +441,7 @@ public class JDAEventListener extends ListenerAdapter {
             public void noMatches() {
                 MessageCreateBuilder builder = new MessageCreateBuilder();
                 builder.setContent("No matches found for: " + finalQuery);
-                dispatchMessageAsEventReply(event, builder.build(), true);
+                dispatchMessageInCorrectChannel(event, builder.build(), true);
             }
 
             @Override
@@ -409,6 +460,16 @@ public class JDAEventListener extends ListenerAdapter {
         });
     }
 
+    private void dispatchMessageInCorrectChannel(GenericInteractionCreateEvent event, MessageCreateData message, boolean ephemeral) {
+        TextChannel tc;
+        if (guildTCIDs.containsKey(event.getGuild().getId())) {
+            tc = event.getGuild().getTextChannelById(guildTCIDs.get(event.getGuild().getId()));
+        } else {
+            tc = event.getGuild().getDefaultChannel().asTextChannel();
+        }
+        tc.sendMessage(message).queue();
+    }
+
     private void dispatchMessageAsEventReply(GenericInteractionCreateEvent event, MessageCreateData message, boolean ephemeral) {
         if (event instanceof SlashCommandInteractionEvent) {
             System.out.println("DEBUG: Sending ephemeral message SlashCommandInteractionEvent");
@@ -420,5 +481,21 @@ public class JDAEventListener extends ListenerAdapter {
             System.out.println("DEBUG: Sending ephemeral message GenericInteractionCreateEvent");
             event.getMessageChannel().sendMessage(message).queue();
         }
+    }
+
+    private void checkChanelIDConfig(String guildID) {
+        var tmp = Launcher.getConfig().getChannelIDsForGuild(guildID);
+        if (tmp != null) {
+            guildVCIDs.put(guildID, tmp.getVoiceChannelID());
+            guildTCIDs.put(guildID, tmp.getTextChannelID());
+        }
+    }
+
+    public BidiMap<String, String> getGuildTCIDs() {
+        return guildTCIDs;
+    }
+
+    public BidiMap<String, String> getGuildVCIDs() {
+        return guildVCIDs;
     }
 }

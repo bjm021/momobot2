@@ -29,17 +29,20 @@ public class Launcher {
     private static JDA jda;
     private static StableDiffusion stableDiffusion;
     private static SDConfigFile sdConfigFile;
+    private static Config config;
+    private static JDAEventListener listener;
 
     private static MusicScheduler scheduler;
 
 
     public static final boolean DEBUG = true;
+    public static final String VERSION = "2.0.0";
 
 
     public static void main(String[] args) {
         System.out.println("Hello world!");
 
-        Config config = new Config();
+        config = new Config();
         sdConfigFile = new SDConfigFile();
 
         apm = new DefaultAudioPlayerManager();
@@ -64,9 +67,10 @@ public class Launcher {
         scheduler = new MusicScheduler(apm, gpm);
 
 
+        listener = new JDAEventListener(apm, gpm, scheduler);
         JDABuilder builder = JDABuilder.createDefault(config.getToken())
                 .setActivity(Activity.listening(" some great music | momobot2"))
-                .addEventListeners(new JDAEventListener(apm, gpm, scheduler));
+                .addEventListeners(listener);
 
         jda = builder.build();
 
@@ -81,7 +85,10 @@ public class Launcher {
                 Commands.slash("test", "Test command"),
                 Commands.slash("txt2img", "Create a stable diffusion image from text (only works when the provider server is online)"),
                 Commands.slash("sd-config", "Configure Stable-Diffusion Settings fot your guild"),
-                Commands.slash("queue", "Show the current queue")
+                Commands.slash("queue", "Show the current queue"),
+                Commands.slash("inspiro", "Generate a random inspiro bot image"),
+                Commands.slash("help", "Show commands & usage"),
+                Commands.slash("configure-channels", "Configure the channels for the bot for this guild")
         ).queue();
 
 
@@ -105,5 +112,13 @@ public class Launcher {
 
     public static SDConfigFile getSdConfigFile() {
         return sdConfigFile;
+    }
+
+    public static Config getConfig() {
+        return config;
+    }
+
+    public static JDAEventListener getListener() {
+        return listener;
     }
 }
