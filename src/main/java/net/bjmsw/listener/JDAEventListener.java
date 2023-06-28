@@ -1,17 +1,16 @@
 package net.bjmsw.listener;
 
-import com.sedmelluq.discord.lavaplayer.filter.equalizer.EqualizerFactory;
 import com.sedmelluq.discord.lavaplayer.player.AudioLoadResultHandler;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import com.sedmelluq.discord.lavaplayer.tools.FriendlyException;
 import com.sedmelluq.discord.lavaplayer.track.AudioPlaylist;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import net.bjmsw.Launcher;
-import net.bjmsw.io.SDConfigFile;
 import net.bjmsw.manager.GuildPlayerManager;
 import net.bjmsw.model.SDConfig;
 import net.bjmsw.util.AudioPlayerSendHandler;
 import net.bjmsw.util.MusicScheduler;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.interaction.GenericInteractionCreateEvent;
 import net.dv8tion.jda.api.events.interaction.ModalInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -26,12 +25,12 @@ import net.dv8tion.jda.api.interactions.components.text.TextInputStyle;
 import net.dv8tion.jda.api.interactions.modals.Modal;
 import net.dv8tion.jda.api.utils.messages.MessageCreateBuilder;
 import net.dv8tion.jda.api.utils.messages.MessageCreateData;
-import org.apache.commons.codec.binary.StringUtils;
-import org.json.JSONObject;
 
+import java.awt.*;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class JDAEventListener extends ListenerAdapter {
 
@@ -64,10 +63,13 @@ public class JDAEventListener extends ListenerAdapter {
             var query = event.getOption("query").getAsString();
             event.deferReply().setEphemeral(true).queue();
             if (Launcher.DEBUG) System.out.println("Query: " + query);
-            if (event.getOption("skip-queue") != null)
-                playTrack(query, event.getOption("skip-queue").getAsBoolean(), event);
-            else
-                playTrack(query, false, event);
+            playTrack(query, true, event);
+
+        } else if (event.getName().equals("add")) {
+            var query = event.getOption("query").getAsString();
+            event.deferReply().setEphemeral(true).queue();
+            if (Launcher.DEBUG) System.out.println("Query: " + query);
+            playTrack(query, false, event);
         } else if (event.getName().equalsIgnoreCase("eq")) {
             event.reply("Equalizer Controls")
                     .addActionRow(
@@ -182,6 +184,20 @@ public class JDAEventListener extends ListenerAdapter {
 
 
 
+        } else if(event.getName().equals("test")) {
+            EmbedBuilder eb = new EmbedBuilder();
+            eb.addField("Test", "Test", false);
+            eb.setColor(Color.red);
+            event.replyEmbeds(eb.build()).setEphemeral(true).queue();
+        } else if (event.getName().equals("queue")) {
+            EmbedBuilder eb = new EmbedBuilder();
+            AtomicInteger counter = new AtomicInteger(1);
+            Launcher.getScheduler().getQueue(event.getGuild().getId()).forEach(track -> {
+                eb.addField(counter + ".: " + track.getInfo().title, track.getInfo().author, false);
+                counter.getAndIncrement();
+            });
+            eb.setColor(Color.CYAN);
+            event.replyEmbeds(eb.build()).queue();
         }
     }
 
@@ -299,6 +315,7 @@ public class JDAEventListener extends ListenerAdapter {
         }
         var vc = vcs.get(0);
 
+        String finalQuery = query;
         Launcher.getApm().loadItem(query, new AudioLoadResultHandler() {
             @Override
             public void trackLoaded(AudioTrack track) {
@@ -307,7 +324,7 @@ public class JDAEventListener extends ListenerAdapter {
 
                 if (now) {
                     scheduler.insertTrack(track, event.getGuild().getId());
-                    try (MessageCreateData message = new MessageCreateBuilder().setContent("Starting track: " + track.getInfo().title + " (" + track.getInfo().uri + ")")
+                    try (MessageCreateData message = new MessageCreateBuilder().setContent("Loaded Track: " + track.getInfo().title)
                             .addActionRow(
                                     Button.primary("pause", "Pause"),
                                     Button.danger("stop", "Stop"),
@@ -315,6 +332,13 @@ public class JDAEventListener extends ListenerAdapter {
                             ).build()) {
                         dispatchMessageAsEventReply(event, message, false);
                     }
+                    event.getMessageChannel().sendMessage("Starting Track: " + track.getInfo().title + " (" + track.getInfo().uri + ")")
+                            .addActionRow(
+                                    Button.primary("pause", "Pause"),
+                                    Button.danger("stop", "Stop"),
+                                    Button.primary("skip", "Skip")
+                            )
+                            .queue();
                 } else {
                     MessageCreateData message = new MessageCreateBuilder().setContent("Added to queue: " + track.getInfo().title).build();
                     scheduler.addTrack(track, event.getGuild().getId());
@@ -326,6 +350,7 @@ public class JDAEventListener extends ListenerAdapter {
 
             @Override
             public void playlistLoaded(AudioPlaylist playlist) {
+
                 if (playlist.isSearchResult()) {
                     List<SelectOption> options = new ArrayList<>();
                     for (var track : playlist.getTracks()) {
@@ -347,17 +372,39 @@ public class JDAEventListener extends ListenerAdapter {
                     dispatchMessageAsEventReply(event, builder.build(), true);
 
 
+                } else {
+                    event.getGuild().getAudioManager().openAudioConnection(vc);
+                    event.getGuild().getAudioManager().setSendingHandler(new AudioPlayerSendHandler(player));
+                    playlist.getTracks().forEach(track -> {
+                        scheduler.addTrack(track, event.getGuild().getId());
+                    });
+
+                    MessageCreateBuilder builder = new MessageCreateBuilder();
+                    builder.setContent("Playlist successfully loaded");
+                    dispatchMessageAsEventReply(event, builder.build(), false);
+                    event.getMessageChannel().sendMessage("Playlist loaded: " + playlist.getName()).queue();
                 }
             }
 
             @Override
             public void noMatches() {
-
+                MessageCreateBuilder builder = new MessageCreateBuilder();
+                builder.setContent("No matches found for: " + finalQuery);
+                dispatchMessageAsEventReply(event, builder.build(), true);
             }
 
             @Override
             public void loadFailed(FriendlyException exception) {
-
+                EmbedBuilder eb = new EmbedBuilder();
+                eb.addField("Test", "Test", false);
+                eb.setColor(Color.red);
+                if (event instanceof SlashCommandInteractionEvent) {
+                    ((SlashCommandInteractionEvent) event).getHook().sendMessageEmbeds(eb.build()).setEphemeral(true).queue();
+                } else if (event instanceof StringSelectInteractionEvent) {
+                    ((StringSelectInteractionEvent) event).getHook().sendMessageEmbeds(eb.build()).setEphemeral(true).queue();
+                } else {
+                    event.getMessageChannel().sendMessageEmbeds(eb.build()).queue();
+                }
             }
         });
     }

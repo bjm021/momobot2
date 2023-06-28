@@ -34,6 +34,7 @@ public class MusicScheduler extends AudioEventAdapter {
 
     public void playNextTrack(String guildId, ButtonInteractionEvent event) {
         if (guildQueues.get(guildId).isEmpty()) {
+            skipEvent = true;
             event.reply("There are no more tracks in the queue!").queue();
             return;
         }
@@ -65,11 +66,16 @@ public class MusicScheduler extends AudioEventAdapter {
 
     private void checkQueue(String guildId) {
         if (!guildQueues.containsKey(guildId))
-            guildQueues.put(guildId, new ArrayBlockingQueue<>(20));
+            guildQueues.put(guildId, new ArrayBlockingQueue<>(500));
     }
 
     @Override
     public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
+        if (endReason == AudioTrackEndReason.REPLACED) return;
+        if (endReason == AudioTrackEndReason.LOAD_FAILED) {
+            Launcher.getJda().getGuildById(gpm.getGuildForPlayer(player)).getDefaultChannel().asTextChannel().sendMessage("Failed to load track " + track.getInfo().title).queue();
+            return;
+        }
         if (skipEvent) {
             skipEvent = false;
             return;
@@ -81,10 +87,14 @@ public class MusicScheduler extends AudioEventAdapter {
             Launcher.getJda().getGuildById(guildId).getAudioManager().closeAudioConnection();
             Launcher.getJda().getGuildById(guildId).getDefaultChannel().asTextChannel().sendMessage("Queue finished.").queue();
         } else {
-            Launcher.getJda().getGuildById(guildId).getDefaultChannel().asTextChannel().sendMessage(String.format("Track %s finished", guildQueues.get(guildId).peek().getInfo().title, guildQueues.get(guildId).peek().getInfo().uri)).queue();
+            Launcher.getJda().getGuildById(guildId).getDefaultChannel().asTextChannel().sendMessage(String.format("Track %s finished", track.getInfo().title, guildQueues.get(guildId).peek().getInfo().uri)).queue();
             playNextTrack(guildId);
         }
 
-        super.onTrackEnd(player, track, endReason);
+    }
+
+    public Queue<AudioTrack> getQueue(String guildId) {
+        checkQueue(guildId);
+        return guildQueues.get(guildId);
     }
 }

@@ -72,18 +72,16 @@ public class Launcher {
 
         jda.updateCommands().addCommands(
                 Commands.slash("eq", "Manipulate the eq"),
-                Commands.slash("play", "Play a song from youtube")
+                Commands.slash("play", "Play a song now (skip current song and insert in queue)")
                         .addOption(
                                 OptionType.STRING, "query", "The search query or youtube link", true
-                        )
-                        .addOption(
-                                OptionType.BOOLEAN, "skip-queue", "Whether to skip the queue or not", false
                         ),
                 Commands.slash("add", "Add a song to the queue (if queue is empty, it will play the song)")
                         .addOption(OptionType.STRING, "query", "The search query or youtube link", true),
                 Commands.slash("test", "Test command"),
                 Commands.slash("txt2img", "Create a stable diffusion image from text (only works when the provider server is online)"),
-                Commands.slash("sd-config", "Configure Stable-Diffusion Settings fot your guild")
+                Commands.slash("sd-config", "Configure Stable-Diffusion Settings fot your guild"),
+                Commands.slash("queue", "Show the current queue")
         ).queue();
 
 
