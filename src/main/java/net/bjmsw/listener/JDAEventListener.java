@@ -218,22 +218,61 @@ public class JDAEventListener extends ListenerAdapter {
         } else if (event.getName().equals("help")) {
             StaticMessages.help(event);
         } else if (event.getName().equals("configure-channels")) {
-            event.replyModal(
-                    Modal.create("configure-channels", "Configure Bot Channels")
-                            .addActionRow(
-                                    TextInput.create("bot-vc-id", "Bot Voice Channel ID", TextInputStyle.SHORT)
-                                            .setPlaceholder("Enter the ID of the voice channel you want the bot to join")
-                                            .setRequired(true)
-                                            .build()
-                            )
-                            .addActionRow(
-                                    TextInput.create("bot-tc-id", "Bot Text Channel ID", TextInputStyle.SHORT)
-                                            .setPlaceholder("Enter the ID of the text channel you want the bot to use for status messaged")
-                                            .setRequired(true)
-                                            .build()
-                            )
-                            .build()
-            ).queue();
+            if (Launcher.getConfig().getChannelIDsForGuild(event.getGuild().getId()) != null) {
+                var channelIDs = Launcher.getConfig().getChannelIDsForGuild(event.getGuild().getId());
+                event.replyModal(
+                        Modal.create("configure-channels", "Configure Bot Channels")
+                                .addActionRow(
+                                        TextInput.create("bot-vc-id", "Bot Voice Channel ID", TextInputStyle.SHORT)
+                                                .setPlaceholder("Enter the ID of the voice channel you want the bot to join")
+                                                .setValue(channelIDs.getVoiceChannelID())
+                                                .setRequired(true)
+                                                .build()
+                                )
+                                .addActionRow(
+                                        TextInput.create("bot-tc-id", "Bot Text Channel ID", TextInputStyle.SHORT)
+                                                .setPlaceholder("Enter the ID of the text channel you want the bot to use for status messaged")
+                                                .setRequired(true)
+                                                .setValue(channelIDs.getTextChannelID())
+                                                .build()
+                                )
+                                .build()
+                ).queue();
+            } else {
+                event.replyModal(
+                        Modal.create("configure-channels", "Configure Bot Channels")
+                                .addActionRow(
+                                        TextInput.create("bot-vc-id", "Bot Voice Channel ID", TextInputStyle.SHORT)
+                                                .setPlaceholder("Enter the ID of the voice channel you want the bot to join")
+                                                .setRequired(true)
+                                                .build()
+                                )
+                                .addActionRow(
+                                        TextInput.create("bot-tc-id", "Bot Text Channel ID", TextInputStyle.SHORT)
+                                                .setPlaceholder("Enter the ID of the text channel you want the bot to use for status messaged")
+                                                .setRequired(true)
+                                                .build()
+                                )
+                                .build()
+                ).queue();
+            }
+        } else if(event.getName().equals("pause")) {
+            if (gpm.getPlayerForGuild(event.getGuild().getId()).getPlayingTrack() != null) {
+                gpm.getPlayerForGuild(event.getGuild().getId()).setPaused(true);
+                event.reply("Paused the playback!").setEphemeral(true).queue();
+            } else {
+                event.reply("No track is currently playing!").setEphemeral(true).queue();
+            }
+        } else if (event.getName().equals("resume")) {
+            if (gpm.getPlayerForGuild(event.getGuild().getId()).isPaused()) {
+                gpm.getPlayerForGuild(event.getGuild().getId()).setPaused(false);
+                event.reply("Resumed the playback!").setEphemeral(true).queue();
+            } else {
+                event.reply("No track is currently paused!").setEphemeral(true).queue();
+            }
+        } else if (event.getName().equals("skip")) {
+            event.reply("Trying to skip the current track!").setEphemeral(true).queue();
+            scheduler.playNextTrack(event.getGuild().getId());
         }
     }
 
@@ -323,6 +362,27 @@ public class JDAEventListener extends ListenerAdapter {
             }
 
         } else if (event.getModalId().equals("configure-channels")) {
+
+            try {
+                if (Launcher.getJda().getChannelById(TextChannel.class, event.getValue("bot-tc-id").getAsString()) == null) {
+                    event.reply("Invalid text channel ID!").setEphemeral(true).queue();
+                    return;
+                }
+            } catch (IllegalArgumentException e) {
+                event.reply("Invalid text channel ID!").setEphemeral(true).queue();
+                return;
+            }
+            try {
+                if (Launcher.getJda().getChannelById(VoiceChannel.class, event.getValue("bot-vc-id").getAsString()) == null) {
+                    event.reply("Invalid voice channel ID!").setEphemeral(true).queue();
+                    return;
+                }
+            } catch (IllegalArgumentException e) {
+                event.reply("Invalid voice channel ID!").setEphemeral(true).queue();
+                return;
+            }
+
+
             ChannelIDConfig config = new ChannelIDConfig(
                     event.getValue("bot-vc-id").getAsString(),
                     event.getValue("bot-tc-id").getAsString()

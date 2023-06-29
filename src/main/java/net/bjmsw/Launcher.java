@@ -88,7 +88,10 @@ public class Launcher {
                 Commands.slash("queue", "Show the current queue"),
                 Commands.slash("inspiro", "Generate a random inspiro bot image"),
                 Commands.slash("help", "Show commands & usage"),
-                Commands.slash("configure-channels", "Configure the channels for the bot for this guild")
+                Commands.slash("configure-channels", "Configure the channels for the bot for this guild"),
+                Commands.slash("pause", "Pause the current song"),
+                Commands.slash("resume", "Resume the current song"),
+                Commands.slash("skip", "Skip the current song")
         ).queue();
 
 

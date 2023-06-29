@@ -39,7 +39,17 @@ public class MusicScheduler extends AudioEventAdapter {
             event.reply("There are no more tracks in the queue!").queue();
             return;
         }
-        event.reply("Skipped " + gpm.getPlayerForGuild(guildId).getPlayingTrack().getInfo().title).queue();
+        if (gpm.getPlayerForGuild(guildId).getPlayingTrack() != null)
+            gpm.getPlayerForGuild(guildId).stopTrack();
+        event.reply("Skipped " + gpm.getPlayerForGuild(guildId).getPlayingTrack().getInfo().title).setEphemeral(true).queue();
+
+        TextChannel tc;
+        if (Launcher.getListener().getGuildTCIDs().containsKey(guildId))
+            tc = Launcher.getJda().getGuildById(guildId).getTextChannelById(Launcher.getListener().getGuildTCIDs().get(guildId));
+        else
+            tc = Launcher.getJda().getGuildById(guildId).getDefaultChannel().asTextChannel();
+
+        tc.sendMessage("Skipped " + gpm.getPlayerForGuild(guildId).getPlayingTrack().getInfo().title).queue();
         playNextTrack(guildId);
     }
 
