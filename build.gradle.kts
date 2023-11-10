@@ -41,6 +41,11 @@ dependencies {
     // https://mvnrepository.com/artifact/org.json/json
     implementation("org.json:json:20231013")
 
+    // SLJ4J
+    implementation("org.slf4j:slf4j-api:1.7.32")
+    implementation("org.slf4j:slf4j-simple:1.7.32")
+    implementation("org.slf4j:slf4j-log4j12:+")
+
 }
 
 tasks.test {

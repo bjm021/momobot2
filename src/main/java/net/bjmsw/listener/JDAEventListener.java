@@ -120,6 +120,10 @@ public class JDAEventListener extends ListenerAdapter {
 
 
         } else if (event.getName().equalsIgnoreCase("sd-config")) {
+            if (!Launcher.getConfig().getAdmins().contains(event.getUser().getId())) {
+                event.replyEmbeds(new EmbedBuilder().setTitle("You are not allowed to use this command!").setColor(Color.RED).build()).setEphemeral(true).queue();
+                return;
+            }
             boolean hasConfig = Launcher.getSdConfigFile().getConfig(event.getGuild().getId()) != null;
             SDConfig sdConfig = null;
 
@@ -215,6 +219,10 @@ public class JDAEventListener extends ListenerAdapter {
         } else if (event.getName().equals("help")) {
             StaticMessages.help(event);
         } else if (event.getName().equals("configure-channels")) {
+            if (!Launcher.getConfig().getAdmins().contains(event.getUser().getId())) {
+                event.replyEmbeds(new EmbedBuilder().setTitle("You are not allowed to use this command!").setColor(Color.RED).build()).setEphemeral(true).queue();
+                return;
+            }
             if (Launcher.getConfig().getChannelIDsForGuild(event.getGuild().getId()) != null) {
                 var channelIDs = Launcher.getConfig().getChannelIDsForGuild(event.getGuild().getId());
                 event.replyModal(

@@ -42,6 +42,8 @@ public class Launcher {
     public static void main(String[] args) {
         System.out.println("Hello world!");
 
+        //org.apache.log4j.BasicConfigurator.configure();
+
         config = new Config();
         sdConfigFile = new SDConfigFile();
 

@@ -77,7 +77,7 @@ public class MusicScheduler extends AudioEventAdapter {
                     )
                     .addActionRow(
                             Button.primary("10sback", "<< 10s"),
-                            Button.primary("showeq", "EQ"),
+                            Button.success("showeq", "EQ"),
                             Button.primary("10sforward", "10s >>")
                     )
                     .queue();
@@ -90,7 +90,7 @@ public class MusicScheduler extends AudioEventAdapter {
     }
 
     public void insertTrack(AudioTrack track, String guildID, TextChannel tc) {
-        skipEvent = true;
+        //skipEvent = true;
         checkQueue(guildID);
         gpm.getPlayerForGuild(guildID).startTrack(track, false);
         if (tc != null) sendSeekbarMessage(guildID, tc);
@@ -103,6 +103,7 @@ public class MusicScheduler extends AudioEventAdapter {
 
     @Override
     public void onTrackEnd(AudioPlayer player, AudioTrack track, AudioTrackEndReason endReason) {
+        if (Launcher.DEBUG) System.out.println("[TrackEnd] Track ended with reason " + endReason.name());
         String guildId = gpm.getGuildForPlayer(player);
         TextChannel tc;
         if (Launcher.getListener().getGuildTCIDs().containsKey(guildId))
@@ -118,15 +119,18 @@ public class MusicScheduler extends AudioEventAdapter {
             playNextTrack(guildId);
             return;
         }
+        if (Launcher.DEBUG) System.out.println("[TrackEnd] Should we skip? " + skipEvent);
         if (skipEvent) {
             skipEvent = false;
             return;
         }
 
+        if (Launcher.DEBUG) System.out.println("[TrackEnd] Checking if queue is empty");
         if (guildQueues.get(guildId).isEmpty() && player.getPlayingTrack() == null) {
             Launcher.getJda().getGuildById(guildId).getAudioManager().closeAudioConnection();
             tc.sendMessage("Queue finished.").queue();
         } else {
+            if (Launcher.DEBUG) System.out.println("[TrackEnd] Playing next track");
             tc.sendMessage(String.format("Track %s finished", track.getInfo().title, guildQueues.get(guildId).peek().getInfo().uri)).queue();
             playNextTrack(guildId);
         }
