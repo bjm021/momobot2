@@ -34,13 +34,16 @@ public class MusicScheduler extends AudioEventAdapter {
     }
 
     public void playNextTrack(String guildId, ButtonInteractionEvent event) {
+        if (Launcher.DEBUG) System.out.println("[Skip] Playing next track");
         if (guildQueues.get(guildId).isEmpty()) {
             skipEvent = true;
             event.reply("There are no more tracks in the queue!").queue();
             return;
         }
-        if (gpm.getPlayerForGuild(guildId).getPlayingTrack() != null)
-            gpm.getPlayerForGuild(guildId).stopTrack();
+
+        //if (gpm.getPlayerForGuild(guildId).getPlayingTrack() != null)
+        //    gpm.getPlayerForGuild(guildId).stopTrack();
+
         event.reply("Skipped " + gpm.getPlayerForGuild(guildId).getPlayingTrack().getInfo().title).setEphemeral(true).queue();
 
         TextChannel tc;
@@ -54,6 +57,7 @@ public class MusicScheduler extends AudioEventAdapter {
     }
 
     public boolean playNextTrack(String guildId) {
+        if (Launcher.DEBUG) System.out.println("[playNextTrack] Playing next track");
         checkQueue(guildId);
         if (!guildQueues.get(guildId).isEmpty()) {
             gpm.getPlayerForGuild(guildId).startTrack(guildQueues.get(guildId).poll(), false);
@@ -71,16 +75,25 @@ public class MusicScheduler extends AudioEventAdapter {
                             Button.danger("stop", "Stop"),
                             Button.primary("skip", "Skip")
                     )
+                    .addActionRow(
+                            Button.primary("10sback", "<< 10s"),
+                            Button.primary("showeq", "EQ"),
+                            Button.primary("10sforward", "10s >>")
+                    )
                     .queue();
+
+            sendSeekbarMessage(guildId, tc);
+
             return true;
         }
         return false;
     }
 
-    public void insertTrack(AudioTrack track, String guildID) {
+    public void insertTrack(AudioTrack track, String guildID, TextChannel tc) {
         skipEvent = true;
         checkQueue(guildID);
         gpm.getPlayerForGuild(guildID).startTrack(track, false);
+        if (tc != null) sendSeekbarMessage(guildID, tc);
     }
 
     private void checkQueue(String guildId) {
@@ -99,6 +112,7 @@ public class MusicScheduler extends AudioEventAdapter {
 
 
         if (endReason == AudioTrackEndReason.REPLACED) return;
+        if (endReason == AudioTrackEndReason.STOPPED) return;
         if (endReason == AudioTrackEndReason.LOAD_FAILED) {
             tc.sendMessage("Failed to load track " + track.getInfo().title).queue();
             playNextTrack(guildId);
@@ -122,5 +136,19 @@ public class MusicScheduler extends AudioEventAdapter {
     public Queue<AudioTrack> getQueue(String guildId) {
         checkQueue(guildId);
         return guildQueues.get(guildId);
+    }
+
+    private void sendSeekbarMessage(String guildID, TextChannel tc) {
+        if (Launcher.DEBUG) System.out.println("[Seekbar] Preparing seekbar message (Channel: " + tc.getName() + ", Guild: " + guildID + ")");
+        if (gpm.getSeekbarMessageForGuild(guildID) != null) {
+            if (Launcher.DEBUG) System.out.println("[Seekbar] Interrupting seekbar message");
+            gpm.getSeekbarMessageForGuild(guildID).interrupt();
+        }
+        if (Launcher.DEBUG) System.out.println("[Seekbar] Creating seekbar message");
+        var message = new SeekbarMessage(tc, guildID, gpm);
+        if (Launcher.DEBUG) System.out.println("[Seekbar] Starting seekbar message");
+        message.start();
+        gpm.setSeekbarMessageForGuild(guildID, message);
+        if (Launcher.DEBUG) System.out.println("[Seekbar] Replaced seekbar message");
     }
 }

@@ -4,6 +4,7 @@ import com.sedmelluq.discord.lavaplayer.filter.equalizer.EqualizerFactory;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayer;
 import com.sedmelluq.discord.lavaplayer.player.AudioPlayerManager;
 import net.bjmsw.Launcher;
+import net.bjmsw.util.SeekbarMessage;
 import org.apache.commons.collections4.BidiMap;
 import org.apache.commons.collections4.bidimap.DualHashBidiMap;
 
@@ -18,10 +19,13 @@ public class GuildPlayerManager {
     private BidiMap<String, AudioPlayer> guildPlayers;
     private BidiMap<String, EqualizerFactory> guildEqualizers;
 
+    private BidiMap<String, SeekbarMessage> seekbarMessages;
+
     public GuildPlayerManager(AudioPlayerManager apm) {
         this.apm = apm;
         this.guildPlayers = new DualHashBidiMap<>();
         this.guildEqualizers = new DualHashBidiMap<>();
+        this.seekbarMessages = new DualHashBidiMap<>();
     }
 
     public AudioPlayer getPlayerForGuild(String guildId) {
@@ -49,4 +53,11 @@ public class GuildPlayerManager {
         return guildEqualizers.getKey(equalizer);
     }
 
+    public SeekbarMessage getSeekbarMessageForGuild(String guildID) {
+        return seekbarMessages.get(guildID);
+    }
+
+    public void setSeekbarMessageForGuild(String guildID, SeekbarMessage seekbarMessage) {
+        seekbarMessages.put(guildID, seekbarMessage);
+    }
 }

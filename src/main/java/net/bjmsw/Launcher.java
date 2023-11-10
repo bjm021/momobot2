@@ -91,7 +91,8 @@ public class Launcher {
                 Commands.slash("configure-channels", "Configure the channels for the bot for this guild"),
                 Commands.slash("pause", "Pause the current song"),
                 Commands.slash("resume", "Resume the current song"),
-                Commands.slash("skip", "Skip the current song")
+                Commands.slash("skip", "Skip the current song"),
+                Commands.slash("cat", "Send a random cat")
         ).queue();
 
 

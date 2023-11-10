@@ -43,6 +43,7 @@ public class Config {
         JSONObject config = new JSONObject();
         config.put("token", "PUT-YOUR-TOKEN-HERE");
         config.put("sd_url", "http://localhost:7860/");
+        config.put("tenor_api_key", "API-KEY-HERE");
         JSONObject channelIDS = new JSONObject();
         JSONObject tmpChanelGuildConfig = new JSONObject();
         tmpChanelGuildConfig.put("vc", "PUT-VOICE-CHANNEL-ID-HERE");
@@ -54,6 +55,9 @@ public class Config {
 
     public String getToken() {
         return config.getString("token");
+    }
+    public String getTenorKey() {
+        return config.getString("tenor_api_key");
     }
 
     public String getSD_url() {

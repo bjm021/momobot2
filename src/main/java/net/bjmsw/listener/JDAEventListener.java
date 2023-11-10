@@ -9,10 +9,7 @@ import net.bjmsw.Launcher;
 import net.bjmsw.manager.GuildPlayerManager;
 import net.bjmsw.model.ChannelIDConfig;
 import net.bjmsw.model.SDConfig;
-import net.bjmsw.util.AudioPlayerSendHandler;
-import net.bjmsw.util.InspiroBot;
-import net.bjmsw.util.MusicScheduler;
-import net.bjmsw.util.StaticMessages;
+import net.bjmsw.util.*;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.concrete.VoiceChannel;
@@ -72,13 +69,13 @@ public class JDAEventListener extends ListenerAdapter {
             //event.deferReply().queue();
             var query = event.getOption("query").getAsString();
             event.deferReply().setEphemeral(true).queue();
-            if (Launcher.DEBUG) System.out.println("Query: " + query);
+            if (Launcher.DEBUG) System.out.println("Query (play): " + query);
             playTrack(query, true, event);
 
         } else if (event.getName().equals("add")) {
             var query = event.getOption("query").getAsString();
             event.deferReply().setEphemeral(true).queue();
-            if (Launcher.DEBUG) System.out.println("Query: " + query);
+            if (Launcher.DEBUG) System.out.println("Query (add): " + query);
             playTrack(query, false, event);
         } else if (event.getName().equalsIgnoreCase("eq")) {
             event.reply("Equalizer Controls")
@@ -273,6 +270,9 @@ public class JDAEventListener extends ListenerAdapter {
         } else if (event.getName().equals("skip")) {
             event.reply("Trying to skip the current track!").setEphemeral(true).queue();
             scheduler.playNextTrack(event.getGuild().getId());
+        } else if (event.getName().equals("cat")) {
+            event.deferReply().queue();
+            CatAsAService.sendCat(event);
         }
     }
 
@@ -291,6 +291,9 @@ public class JDAEventListener extends ListenerAdapter {
         } else if (event.getComponentId().equalsIgnoreCase("stop")) {
             player.stopTrack();
             //event.getHook().sendMessage("Stopped!").queue();
+            if (gpm.getSeekbarMessageForGuild(event.getGuild().getId()) != null) {
+                gpm.getSeekbarMessageForGuild(event.getGuild().getId()).interrupt();
+            }
             event.getGuild().getAudioManager().closeAudioConnection();
             event.reply("Stopped!").setEphemeral(false).queue();
             state = PlayerState.STOPPED;
@@ -317,6 +320,18 @@ public class JDAEventListener extends ListenerAdapter {
         } else if (event.getComponentId().equalsIgnoreCase("eq-piano")) {
             var piano = gpm.getEqualizerForGuild(event.getGuild().getId());
             player.setFilterFactory(piano);
+        } else if (event.getComponentId().equals("10sback")) {
+            player.getPlayingTrack().setPosition(player.getPlayingTrack().getPosition() - 10000);
+            event.editButton(Button.primary("10sback", "<< 10s")).queue();
+        } else if (event.getComponentId().equals("10sforward")) {
+            player.getPlayingTrack().setPosition(player.getPlayingTrack().getPosition() + 10000);
+            event.editButton(Button.primary("10sforward", "10s >>")).queue();
+        } else if (event.getComponentId().equals("showeq")) {
+            event.reply("Equalizer Controls")
+                    .addActionRow(
+                            Button.primary("eq-bassboost", "Bass Boost"),
+                            Button.primary("eq-normal", "Normal")
+                    ).setEphemeral(true).queue();
         }
     }
 
@@ -398,8 +413,9 @@ public class JDAEventListener extends ListenerAdapter {
             boolean skip = Boolean.parseBoolean(event.getComponentId().split(":")[1]);
             event.deferReply().setEphemeral(true).queue();
             var query = event.getSelectedOptions().get(0).getValue();
-            if (Launcher.DEBUG) System.out.println("Query: " + query);
+            if (Launcher.DEBUG) System.out.println("Query: (select) " + query);
             playTrack(query, skip, event);
+            if (Launcher.DEBUG) System.out.println("Query (select) done");
         }
     }
 
@@ -438,7 +454,7 @@ public class JDAEventListener extends ListenerAdapter {
                 event.getGuild().getAudioManager().setSendingHandler(new AudioPlayerSendHandler(player));
 
                 if (now) {
-                    scheduler.insertTrack(track, event.getGuild().getId());
+                    scheduler.insertTrack(track, event.getGuild().getId(), tc);
                     try (MessageCreateData message = new MessageCreateBuilder().setContent("Loaded Track: " + track.getInfo().title).build()) {
                         dispatchMessageAsEventReply(event, message, true);
                     }
@@ -447,6 +463,11 @@ public class JDAEventListener extends ListenerAdapter {
                                     Button.primary("pause", "Pause"),
                                     Button.danger("stop", "Stop"),
                                     Button.primary("skip", "Skip")
+                            )
+                            .addActionRow(
+                                    Button.primary("10sback", "<< 10s"),
+                                    Button.success("showeq", "EQ"),
+                                    Button.primary("10sforward", "10s >>")
                             )
                             .queue();
                 } else {

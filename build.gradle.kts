@@ -13,14 +13,17 @@ repositories {
     }
     jcenter()
     mavenLocal()
+    maven {
+        url = uri("https://jitpack.io")
+    } // For com.github.walkyst.JAADec-fork:jaadec-ext-aac & ibxm-fork:com.github.walkyst:ibxm-fork
 }
 
 dependencies {
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    implementation("com.sedmelluq:lavaplayer:1.3.77")
+    implementation("dev.arbjerg:lavaplayer:2.0.3")
 
-    implementation ("net.dv8tion:JDA:5.0.0-beta.11")
+    implementation ("net.dv8tion:JDA:5.0.0-beta.17")
     implementation ("ch.qos.logback:logback-classic:1.2.8")
 
     // https://mvnrepository.com/artifact/net.iharder/base64
@@ -33,10 +36,10 @@ dependencies {
     implementation("com.cedarsoftware:json-io:4.13.0")
 
     // https://mvnrepository.com/artifact/commons-io/commons-io
-    implementation("commons-io:commons-io:2.11.0")
+    implementation("commons-io:commons-io:2.15.0")
 
     // https://mvnrepository.com/artifact/org.json/json
-    implementation("org.json:json:20230227")
+    implementation("org.json:json:20231013")
 
 }
 
