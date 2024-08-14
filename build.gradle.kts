@@ -11,6 +11,7 @@ repositories {
         url = uri("https://m2.dv8tion.net/releases")
         name = "dv8tion maven"
     }
+    maven(url = "https://maven.lavalink.dev/releases")
     jcenter()
     mavenLocal()
     maven {
@@ -21,9 +22,11 @@ repositories {
 dependencies {
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    implementation("dev.arbjerg:lavaplayer:2.0.3")
+    implementation("dev.arbjerg:lavaplayer:2.1.2")
 
-    implementation ("net.dv8tion:JDA:5.0.0-beta.17")
+    implementation("dev.lavalink.youtube:common:1.6.0")
+
+    implementation ("net.dv8tion:JDA:5.0.0-beta.24")
     implementation ("ch.qos.logback:logback-classic:1.2.8")
 
     // https://mvnrepository.com/artifact/net.iharder/base64
@@ -41,10 +44,7 @@ dependencies {
     // https://mvnrepository.com/artifact/org.json/json
     implementation("org.json:json:20231013")
 
-    // SLJ4J
-    implementation("org.slf4j:slf4j-api:1.7.32")
-    implementation("org.slf4j:slf4j-simple:1.7.32")
-    implementation("org.slf4j:slf4j-log4j12:+")
+
 
 }
 

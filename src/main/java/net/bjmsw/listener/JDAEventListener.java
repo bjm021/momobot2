@@ -279,8 +279,16 @@ public class JDAEventListener extends ListenerAdapter {
             event.reply("Trying to skip the current track!").setEphemeral(true).queue();
             scheduler.playNextTrack(event.getGuild().getId());
         } else if (event.getName().equals("cat")) {
-            event.deferReply().queue();
-            CatAsAService.sendCat(event);
+            if (event.getOption("user") != null) {
+                var user = event.getOption("user").getAsUser();
+                event.deferReply().queue();
+                CatAsAService.sendCat(event, user);
+            } else {
+                event.deferReply().queue();
+                CatAsAService.sendCat(event);
+            }
+            //event.deferReply().queue();
+            //CatAsAService.sendCat(event);
         }
     }
 
@@ -536,7 +544,8 @@ public class JDAEventListener extends ListenerAdapter {
             @Override
             public void loadFailed(FriendlyException exception) {
                 EmbedBuilder eb = new EmbedBuilder();
-                eb.addField("Test", "Test", false);
+                eb.setTitle("An error occurred while loading the track!");
+                eb.setDescription(exception.getMessage());
                 eb.setColor(Color.red);
                 if (event instanceof SlashCommandInteractionEvent) {
                     ((SlashCommandInteractionEvent) event).getHook().sendMessageEmbeds(eb.build()).setEphemeral(true).queue();

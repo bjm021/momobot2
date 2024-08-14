@@ -3,6 +3,7 @@ package net.bjmsw.util;
 import com.sun.tools.javac.Main;
 import net.bjmsw.Launcher;
 import net.bjmsw.io.Config;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.utils.FileUpload;
@@ -12,24 +13,59 @@ import org.apache.http.impl.client.HttpClients;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
+import java.nio.file.Files;
 
 public class CatAsAService {
 
     public static void sendCat(SlashCommandInteractionEvent event) {
+        sendCat(event, null);
+    }
+
+    public static void sendCat(SlashCommandInteractionEvent event, User user) {
 
         // choose randomly between theCatApi and tenorCat and cataas
         String url = switch ((int) (Math.random() * 3)) {
             case 0 -> theCatApi();
-            case 1 -> tenorCat();
-            case 2 -> tenorCat(); // should be cataas() when it is working
+            case 1 -> "https://cataas.com/cat/gif";
+            case 2 -> theCatApi(); // should be cataas() when it is working
             default -> "";
         };
 
+        // download image as <GuildID>.extension
+        try {
+            // check if ./tmp exists
+            File tmp = new File("./tmp");
+            if (!tmp.exists()) tmp.mkdir();
 
-        if (!url.isEmpty())
-            event.getHook().sendMessage(url).queue();
+            URL imageUrl = new URL(url);
+            InputStream is = imageUrl.openStream();
+            // get extension from url
+            String extension = url.substring(url.lastIndexOf("."));
+            if (url.startsWith("https://cataas.com/cat/gif")) extension = ".gif";
+            File file = new File("./tmp/" + event.getGuild().getId() + extension);
+            if (file.exists()) file.delete();
+            // save image
+            Files.copy(is, file.toPath());
+            is.close();
+            is = Files.newInputStream(file.toPath());
+            file.deleteOnExit();
+
+            if (!url.isEmpty()) {
+                if (user == null)
+                    event.getHook().sendFiles(FileUpload.fromData(is, file.getName())).queue();
+                else
+                    event.getHook().sendMessage(user.getAsMention()).addFiles(FileUpload.fromData(is, file.getName())).queue();
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
     }
 
     private static String cataas(SlashCommandInteractionEvent e) {

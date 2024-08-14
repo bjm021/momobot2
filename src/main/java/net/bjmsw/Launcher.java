@@ -9,7 +9,7 @@ import com.sedmelluq.discord.lavaplayer.source.local.LocalAudioSourceManager;
 import com.sedmelluq.discord.lavaplayer.source.soundcloud.SoundCloudAudioSourceManager;
 import com.sedmelluq.discord.lavaplayer.source.twitch.TwitchStreamAudioSourceManager;
 import com.sedmelluq.discord.lavaplayer.source.vimeo.VimeoAudioSourceManager;
-import com.sedmelluq.discord.lavaplayer.source.youtube.YoutubeAudioSourceManager;
+import dev.lavalink.youtube.YoutubeAudioSourceManager;
 import net.bjmsw.io.Config;
 import net.bjmsw.io.SDConfigFile;
 import net.bjmsw.listener.JDAEventListener;
@@ -94,7 +94,7 @@ public class Launcher {
                 Commands.slash("pause", "Pause the current song"),
                 Commands.slash("resume", "Resume the current song"),
                 Commands.slash("skip", "Skip the current song"),
-                Commands.slash("cat", "Send a random cat")
+                Commands.slash("cat", "Send a random cat").addOption(OptionType.USER, "user", "The user to send the cat to", false)
         ).queue();
 
 
