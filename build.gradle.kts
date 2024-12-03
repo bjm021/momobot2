@@ -22,11 +22,11 @@ repositories {
 dependencies {
     testImplementation(platform("org.junit:junit-bom:5.9.1"))
     testImplementation("org.junit.jupiter:junit-jupiter")
-    implementation("dev.arbjerg:lavaplayer:2.1.2")
+    implementation("dev.arbjerg:lavaplayer:2.2.2")
 
-    implementation("dev.lavalink.youtube:common:1.6.0")
+    implementation("dev.lavalink.youtube:common:1.10.2")
 
-    implementation ("net.dv8tion:JDA:5.0.0-beta.24")
+    implementation ("net.dv8tion:JDA:5.2.1")
     implementation ("ch.qos.logback:logback-classic:1.2.8")
 
     // https://mvnrepository.com/artifact/net.iharder/base64
