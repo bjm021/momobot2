@@ -442,10 +442,11 @@ public class JDAEventListener extends ListenerAdapter {
         }
 
         TextChannel tc;
+        var test = event.getGuild();
         if (guildTCIDs.containsKey(event.getGuild().getId())) {
-            tc = event.getGuild().getTextChannelById(guildTCIDs.get(event.getGuild().getId()));
+            tc = Launcher.getJda().getTextChannelById(guildTCIDs.get(event.getGuild().getId()));
         } else {
-            tc = event.getGuild().getDefaultChannel().asTextChannel();
+            tc = event.getGuild().getTextChannels().get(0);
         }
 
         var vcs = event.getGuild().getVoiceChannels();

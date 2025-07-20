@@ -76,7 +76,7 @@ public class Config {
         JSONObject channelIDS = config.getJSONObject("channel-ids");
         if (channelIDS.has(guildID)) {
             JSONObject channelIDConfig = channelIDS.getJSONObject(guildID);
-            return new ChannelIDConfig(channelIDConfig.getString("vc"), channelIDConfig.getString("general-messages-tc"));
+            return new ChannelIDConfig(channelIDConfig.getString("general-messages-tc"), channelIDConfig.getString("vc"));
         } else return null;
     }
 
